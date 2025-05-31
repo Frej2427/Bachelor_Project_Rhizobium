@@ -1,0 +1,10 @@
+ggplot(genome_stats, aes(x = N50, y = Circular_Contigs, label = Assembly)) +
+  geom_point(color = "darkred", size = 3) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(
+    title = "Circularized Contigs vs. N50",
+    x = "N50 (bp)",
+    y = "Number of Circularized Contigs"
+  )
+ggsave("Circlarization_vs_N50.png", width = 8, height = 5, dpi = 300)
