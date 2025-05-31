@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH --job-name=prokka_annotation
+#SBATCH --partition=normal
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=10:00:00
+#SBATCH --output=prokka_%j.log
+
+for file in assemblies/*.asm.bp.p_ctg.gfa; do
+    base=$(basename "$file" .asm.bp.p_ctg.gfa)
+    awk '/^S/{print ">"$2"\n"$3}' "$file" > "assemblies/$base.fq"
+    prokka --outdir "annotations/$base" --prefix "$base" "assemblies/$base.fq" --cpus 8
+done
