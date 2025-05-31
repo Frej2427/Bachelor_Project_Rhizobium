@@ -1,0 +1,95 @@
+mkdir -p blast_outputs
+for genome in annotations/ffn_files/*.ffn; do
+    sample=$(basename "$genome" .ffn)
+    makeblastdb -in "$genome" -dbtype nucl
+    tblastn -query core_genes_305_AA.faa \
+            -db "$genome" \
+            -outfmt "6 qseqid sseqid pident length evalue bitscore" \
+            -evalue 1e-5 \
+            -out blast_outputs/${sample}_blast.txt
+done
+
+
+for blast_file in blast_outputs/*_blast.txt; do
+    sample=$(basename "$blast_file" _blast.txt)    
+    awk '{
+        if(!seen[$1] || $6 > max[$1]) {
+            seen[$1]=1;
+            max[$1]=$6;
+            res[$1]=$0;
+        }
+    } END {
+        for(gene in res) {
+            print res[gene];
+        }
+    }' "$blast_file" > blast_outputs/${sample}_best_hits.txt
+done
+
+
+mkdir -p extracted_seqs
+for blast_file in blast_outputs/*_best_hits.txt; do
+    sample=$(basename "$blast_file" _best_hits.txt)
+    genome_file="annotations/ffn_files/${sample}.ffn"
+    
+    touch extracted_seqs/${sample}_core_genes.fna
+    
+    while read -r qseqid sseqid pident length evalue bitscore; do
+        # Extract the sequence from the genome file
+        gene_id=$(echo "$sseqid" | cut -d' ' -f1)
+        seqtk subseq "$genome_file" <(echo "$gene_id") >> extracted_seqs/${sample}_core_genes.fna
+    done < "$blast_file"
+done
+
+
+mkdir -p concatenated_seqs
+for file in extracted_seqs/*_core_genes.fna; do
+    sample=$(basename "$file" _core_genes.fna)
+    echo ">${sample}" > concatenated_seqs/${sample}_concatenated.fasta
+    fold -w 80 "$file" | grep -v "^>" >> concatenated_seqs/${sample}_concatenated.fasta
+done
+
+
+ls concatenated_seqs/*_concatenated.fasta > genome_list.txt
+fastANI --ql genome_list.txt --rl genome_list.txt -o fastani_output.txt --matrix
+
+
+#R Script
+library(ggplot2)
+library(reshape2)
+library(pheatmap)
+
+fastani <- read.table("fastani_output.txt", header=FALSE, sep="\t", stringsAsFactors=FALSE)
+colnames(fastani) <- c("query", "reference", "ani", "fragments", "total")
+
+extract_strain <- function(path) {
+  gsub("_concatenated.fasta", "", basename(path))
+}
+fastani$query <- sapply(fastani$query, extract_strain)
+fastani$reference <- sapply(fastani$reference, extract_strain)
+
+strains <- unique(c(fastani$query, fastani$reference))
+ani_matrix <- matrix(NA, nrow=length(strains), ncol=length(strains),
+                     dimnames=list(strains, strains))
+
+for (i in 1:nrow(fastani)) {
+  q <- fastani$query[i]
+  r <- fastani$reference[i]
+  ani_val <- fastani$ani[i]
+  ani_matrix[q, r] <- ani_val
+  ani_matrix[r, q] <- ani_val  # Ensure symmetry
+}
+diag(ani_matrix) <- 100
+ani_matrix <- as.matrix(ani_matrix)
+write.table(ani_matrix, "ANI_matrix.tsv", sep="\t", quote=FALSE)
+
+pheatmap(ani_matrix,
+         clustering_distance_rows = "euclidean",
+         clustering_distance_cols = "euclidean",
+         clustering_method = "average",
+         display_numbers = FALSE,
+         color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
+         fontsize = 8,
+         angle_col = 45,
+         filename = "ANI_heatmap.pdf",
+         show_rownames = FALSE,
+         show_colnames = FALSE)
