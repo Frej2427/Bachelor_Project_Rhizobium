@@ -1,0 +1,25 @@
+mkdir -p assemblies_fasta  
+for gfa in assemblies/*.asm.bp.p_ctg.gfa; do
+    sample_name=$(basename "$gfa" .asm.bp.p_ctg.gfa)
+    awk '$1 == "S" {print ">"$2"\n"$3}' "$gfa" > assemblies_fasta/${sample_name}.asm.bp.p_ctg.fa
+done
+
+#!/bin/bash
+#SBATCH --job-name=circlator_all
+#SBATCH --output=logs/circlator_%A_%a.out
+#SBATCH --error=logs/circlator_%A_%a.err
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=12:00:00
+#SBATCH --array=0-55
+
+mkdir -p circlator_output logs
+FILES=(assemblies_fasta/*.asm.bp.p_ctg.fa)
+
+FASTA=${FILES[$SLURM_ARRAY_TASK_ID]}
+BASE=$(basename "$FASTA" .asm.bp.p_ctg.fa)
+READS="Data/${BASE}.fq"
+OUTDIR="circlator_output/${BASE}"
+
+circlator all "$FASTA" "$READS" "$OUTDIR"
