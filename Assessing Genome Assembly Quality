@@ -31,3 +31,46 @@ assembly_stats <- data.frame(
 
 print(assembly_stats)
 write.table(assembly_stats, file = "assembly_stats.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+
+#Calculate Coverage
+echo -e "Strain\tTotal_Sequenced_Bases" > coverage_raw.tsv
+for fq in Data/*.fq; do
+    strain=$(basename "$fq" .fq)
+    total_bases=$(paste - - - - < "$fq" | cut -f2 | awk '{sum+=length($1)} END {print sum}')
+    echo -e "${strain}\t${total_bases}" >> coverage_raw.tsv
+done
+
+#RStudio Script
+library(tidyverse)
+library(kableExtra)
+
+setwd("C:\\Users\\freja\\Desktop\\Bachelor_Projekt\\Downloaded_files")
+genome_stats <- read.delim("assembly_stats.tsv", header = TRUE, sep = "\t")
+coverage_data <- read.delim("coverage_raw.tsv", header = TRUE, sep = "\t")
+genome_stats$Circular_Contigs <- c(2,0,1,3,0,3,0,1,1,3,1,1,6,6,3,4,3,4,3,4,2,0,6,5,3,1,4,3,1,1,1,5,5,2,2,3,5,5,2,4,1,3,0,0,3,0,2,0,2,5,5,6,3,4,4,4)
+
+genome_stats <- genome_stats %>%
+  left_join(coverage_data, by = c("Assembly" = "Strain"))
+genome_stats <- genome_stats %>%
+  mutate(Coverage = round(Total_Sequenced_Bases / Total_Length, 1))
+head(genome_stats)
+
+My_table <- genome_stats %>%
+  kbl(caption = "Genome Assembly Statistics") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+save_kable(My_table, "Assembly_Stats_Table.html")
+
+halfway_point <- ceiling(nrow(genome_stats) / 2)
+split_tables <- list(
+  table_1 = genome_stats[1:halfway_point, ],
+  table_2 = genome_stats[(halfway_point + 1):nrow(genome_stats), ]
+)
+
+for (i in 1:length(split_tables)) {
+  save_kable(
+    kbl(split_tables[[i]], caption = paste("Genome Assembly Statistics - Part", i)) %>%
+      kable_styling(bootstrap_options = "striped", full_width = FALSE),
+    file = paste0("assembly_stats_part_", i, ".html")
+  )
+}
+
