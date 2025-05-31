@@ -1,0 +1,33 @@
+quast -o assembly_quality_reports -t 8 annotations/fna_files/*.fna
+
+#Rscript
+library(tidyverse)
+report_file <- "report.tsv"
+report <- read_tsv(report_file, col_names = TRUE)
+assemblies <- colnames(report)[2:ncol(report)]
+row_names <- report[[1]]
+
+Total_Length <- as.numeric(report[row_names == "Total length (>= 0 bp)", 2:ncol(report)])
+GC <- as.numeric(report[row_names == "GC (%)", 2:ncol(report)])
+N50 <- as.numeric(report[row_names == "N50", 2:ncol(report)])
+Contigs <- as.numeric(report[row_names == "# contigs (>= 0 bp)", 2:ncol(report)])
+Largest_Contig <- as.numeric(report[row_names == "Largest contig", 2:ncol(report)])
+
+print(length(assemblies))
+print(length(Total_Length))
+print(length(GC))
+print(length(N50))
+print(length(Contigs))
+print(length(Largest_Contig))
+
+assembly_stats <- data.frame(
+  Assembly = assemblies,
+  Total_Length = Total_Length,
+  GC = GC,
+  N50 = N50,
+  Contigs = Contigs,
+  Largest_Contig = Largest_Contig
+)
+
+print(assembly_stats)
+write.table(assembly_stats, file = "assembly_stats.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
