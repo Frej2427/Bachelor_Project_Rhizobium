@@ -7,17 +7,12 @@
 #SBATCH --output=logs/hifiasm_%j.out
 #SBATCH --error=logs/hifiasm_%j.err
 
-# Load modules (adjust if needed)
-module load hifiasm  # Ensure hifiasm is available
-
-# Create output directories if they don’t exist
+module load hifiasm  
 mkdir -p assemblies logs
 
-# Run assembly for each FASTQ file in the Data folder
 for file in Data/*.fq; do
     sample=$(basename "$file" .fq)  # Extracts filename without extension
     echo "Running hifiasm on $sample..."
     hifiasm -o assemblies/"$sample".asm -t 16 "$file"
 done
-
 echo "All assemblies submitted."
