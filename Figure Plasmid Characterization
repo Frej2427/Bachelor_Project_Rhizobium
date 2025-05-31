@@ -1,1 +1,139 @@
+#!/bin/bash
+QUERY="core_genes_305_AA.faa"
+FFN_DIR="annotations/ffn_files"
+OUT_DIR="characterization/blast_out"
 
+mkdir -p "$OUT_DIR"
+for FFN in "$FFN_DIR"/*.ffn; do
+    BASENAME=$(basename "$FFN" .ffn)
+    
+    makeblastdb -in "$FFN" -dbtype nucl -out "$OUT_DIR/${BASENAME}_db"
+    tblastn -query "$QUERY" \
+            -db "$OUT_DIR/${BASENAME}_db" \
+            -outfmt 6 \
+            -max_target_seqs 1 \
+            -evalue 1e-5 \
+            > "$OUT_DIR/${BASENAME}_hits.tsv"    
+    echo "Processed $BASENAME"
+done
+
+
+#!/bin/bash
+HIT_DIR="characterization/blast_out"
+FFN_DIR="annotations/ffn_files"
+OUT_DIR="characterization/coregene_ffn"
+
+mkdir -p "$OUT_DIR"
+for HIT_FILE in "$HIT_DIR"/*_hits.tsv; do
+    STRAIN=$(basename "$HIT_FILE" _hits.tsv)
+    FFN_FILE="$FFN_DIR/${STRAIN}.ffn"
+    OUT_FILE="$OUT_DIR/${STRAIN}_coregenes.fna"
+    [ ! -f "$FFN_FILE" ] && echo "Missing $FFN_FILE" && continue
+
+    cut -f2 "$HIT_FILE" | sort -u > tmp_ids.txt
+    awk 'BEGIN {while ((getline < "tmp_ids.txt") > 0) ids[$1] = 1}
+         /^>/ {keep = 0; header = substr($0, 2); split(header, a, " "); if (a[1] in ids) keep = 1}
+         keep {print}' "$FFN_FILE" > "$OUT_FILE"
+    echo "Extracted: $OUT_FILE"
+done
+
+
+#!/bin/bash
+HITS_DIR="characterization/blast_out"
+SEQ_DIR="characterization/coregene_ffn"
+OUT_DIR="characterization/coregene_pergene"
+
+mkdir -p "$OUT_DIR"
+for HIT_FILE in "$HITS_DIR"/*_hits.tsv; do
+    STRAIN=$(basename "$HIT_FILE" _hits.tsv)
+    SEQ_FILE="$SEQ_DIR/${STRAIN}_coregenes.fna"
+
+    if [[ ! -f "$SEQ_FILE" ]]; then
+        echo "Missing sequence file: $SEQ_FILE"
+        continue
+    fi
+    cut -f1,2 "$HIT_FILE" | while read -r REF_ID STRAIN_ID; do
+        OUT_FILE="$OUT_DIR/${REF_ID}_all_strains.fna"
+        awk -v id="$STRAIN_ID" -v strain="$STRAIN" '
+            BEGIN { printing=0 }
+            /^>/ {
+                printing=0
+                header = substr($0, 2)
+                split(header, parts, " ")
+                if (parts[1] == id) {
+                    printing=1
+                    print ">" strain "_" header
+                }
+                next
+            }
+            printing { print }
+        ' "$SEQ_FILE" >> "$OUT_FILE"
+    done
+    echo "Processed $STRAIN"
+done
+
+
+wget https://raw.githubusercontent.com/marekborowiec/AMAS/master/amas/AMAS.py
+chmod +x AMAS.py
+../../AMAS.py concat -i *_aligned.fna -f fasta -d dna -p partitions.txt -t concatenated.fasta
+
+FastTree -nt concatenated.fasta > core_tree.nwk
+
+
+#!/bin/bash
+mkdir -p blastdbs results
+for fna in annotations/fna_files/*.fna; do
+    strain_id=$(basename "$fna" .fna)
+    makeblastdb -in "$fna" -dbtype nucl -out "blastdbs/${strain_id}_db"
+done
+
+
+#!/bin/bash
+repA_dir="repA_faa"
+db_dir="blastdbs"
+out_dir="${repA_dir}/results"
+
+mkdir -p "$out_dir"
+for repA_file in "$repA_dir"/repA_*.faa; do
+    repA_base=$(basename "$repA_file" .faa)
+    for db_path in "$db_dir"/*_db.nsq; do
+        db_base=$(basename "$db_path" _db.nsq)
+        db_full="${db_dir}/${db_base}_db"
+        out_file="${out_dir}/${repA_base}_vs_${db_base}.tblastn"
+
+        tblastn -query "$repA_file" \
+                -db "$db_full" \
+                -evalue 1e-5 \
+                -outfmt 6 \
+                -out "$out_file"
+    done
+done
+
+
+#!/bin/bash
+cd repA_faa/results || exit 1
+repA_types=($(ls repA_Rh*_vs_*.tblastn | cut -d'_' -f1-2 | sort -u))
+strains=($(ls repA_Rh*_vs_*.tblastn | sed 's/.*_vs_//' | sed 's/.tblastn//' | sort -u))
+out_file="../repA_presence_matrix.csv"
+{
+    echo -n "Strain"
+    for repA in "${repA_types[@]}"; do
+        echo -n ",$repA"
+    done
+    echo
+} > "$out_file"
+
+for strain in "${strains[@]}"; do
+    echo -n "$strain" >> "$out_file"
+    for repA in "${repA_types[@]}"; do
+        file="${repA}_vs_${strain}.tblastn"
+				count=$(awk '$11 < 1e-50 && $12 > 200' "$file" | wc -l)
+				if (( count > 0 )); then
+            echo -n ",1" >> "$out_file"
+        else
+            echo -n ",0" >> "$out_file"
+        fi
+    done
+    echo >> "$out_file"
+done
+echo "Presence/absence matrix written to: $out_file"
