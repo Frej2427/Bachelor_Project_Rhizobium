@@ -1,0 +1,31 @@
+
+library(tidyverse)
+library(ggplot2)
+
+clusters <- read.csv("ANI_cluster_assignments.csv")
+annotation_stats <- read.delim("annotation_stats.tsv", header = TRUE, sep = "\t")
+colnames(annotation_stats)[colnames(annotation_stats) == "Annotation"] <- "Strain"
+merged <- merge(annotation_stats, clusters, by = "Strain")
+
+merged$ANI_Cluster_Collapsed <- ifelse(merged$ANI_Cluster %in% c("Cluster_3", "Cluster_4"),
+                                       "Cluster_Other",
+                                       merged$ANI_Cluster)
+
+pdf("CDS_by_ANI_cluster.pdf", width = 6, height = 4)
+ggplot(merged, aes(x = ANI_Cluster_Collapsed, y = CDS_Count, fill = ANI_Cluster_Collapsed)) +
+  geom_boxplot(outlier.shape = 21, outlier.fill = "white", outlier.color = "black") +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "CDS Count by ANI Cluster",
+    x = "ANI Cluster",
+    y = "Number of Coding Sequences (CDS)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    axis.text.x = element_text(size = 8),
+    legend.position = "none"
+  )
+dev.off()
