@@ -1,0 +1,62 @@
+mkdir -p annotations/txt_files
+find annotations/ -type f -name "*.txt" -exec cp {} annotations/txt_files/ \;
+
+mkdir -p annotations/gff_files
+find annotations/ -type f -name "*.gff" -exec cp {} annotations/gff_files/ \;
+
+nano extract_annotation_stats.sh
+#!/bin/bash
+echo -e "Annotation\tCDS_Count\tAvg_Gene_Length\tCoding_DNA_Percent\trRNA_Genes\ttRNA_Genes\tPlasmid_CDS_Count" > annotation_stats.tsv
+for gff in annotations/gff_files/*.gff; do
+    annotation=$(basename "$gff" .gff)
+    txt="annotations/txt_files/${annoation}.txt"
+
+    cds_count=$(grep -c -P "\tCDS\t" "$gff")
+    total_cds_length=$(awk '$3 == "CDS" {sum += $5 - $4 + 1} END {print sum}' "$gff")
+    avg_cds_length=$(awk -v cds="$cds_count" -v total="$total_cds_length" 'BEGIN {if (cds > 0) print int(total / cds); else print 0}')
+
+    genome_size=$(awk -F": " '/bases/{gsub(/,/, "", $2); print $2}' "$txt")
+    cds_total_length=$(awk '$3 == "CDS" {sum += $5 - $4 + 1} END {print sum}' "$gff")
+    if [[ "$genome_size" -gt 0 ]]; then
+        coding_dna_percent=$(awk -v a="$cds_total_length" -v b="$genome_size" 'BEGIN {printf "%.2f", (a/b)*100}')
+    else
+        coding_dna_percent=0
+    fi
+
+    rrna_count=$(grep -c -i "rRNA" "$gff")
+    trna_count=$(grep -c -i "tRNA" "$gff")
+
+    plasmid_cds=$(grep -P "\tCDS\t" "$gff" | grep -i "plasmid" | wc -l)
+
+    echo -e "${annotation}\t${cds_count}\t${avg_cds_length}\t${coding_dna_percent}\t${rrna_count}\t${trna_count}\t${plasmid_cds}" >> annotation_stats.tsv
+done
+
+chmod +x extract_annotation_stats.sh
+./extract_annotation_stats.sh
+
+#RStudio Script
+library(tidyverse)
+library(kableExtra)
+
+setwd("C:\\Users\\freja\\Desktop\\Bachelor_Projekt\\Downloaded_files")
+annotation_stats <- read.delim("annotation_stats.tsv", header = TRUE, sep = "\t")
+head(annotation_stats)
+
+My_table <- annotation_stats %>%
+  kbl(caption = "Genome Annotation Statistics") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "center")
+
+save_kable(My_table, "Annotation_Stats_Table.html")
+halfway_point <- ceiling(nrow(annotation_stats) / 2)
+split_tables <- list(
+  table_1 = annotation_stats[1:halfway_point, ],
+  table_2 = annotation_stats[(halfway_point + 1):nrow(annotation_stats), ]
+)
+
+for (i in 1:length(split_tables)) {
+  save_kable(
+    kbl(split_tables[[i]], caption = paste("Annotation Statistics - Part", i)) %>%
+      kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "center"),
+    file = paste0("annotation_stats_part_", i, ".html")
+  )
+}
