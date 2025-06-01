@@ -1,3 +1,4 @@
+#RStudio Script
 ggplot(genome_stats, aes(x = N50, y = Contigs, label = Assembly)) +
   geom_point(color = "#0073C2FF", size = 3, alpha = 0.8) +
   theme_minimal(base_size = 14) +
