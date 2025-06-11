@@ -1,12 +1,44 @@
 #RStudio Script
+strain_group_vector <- c(
+  bcAd1004T = "Specialists", bcAd1006T = "Transients", bcAd1007T = "Transients",
+  bcAd1013T = "Transients", bcAd1023T = "Transients", bcAd1024T = "Transients",
+  bcAd1026T = "Transients", bcAd1027T = "Transients", bcAd1028T = "Transients",
+  bcAd1029T = "Transients", bcAd1030T = "unknown", bcAd1031T = "Specialists",
+  bcAd1032T = "Dominants", bcAd1033T = "Specialists", bcAd1034T = "Specialists",
+  bcAd1035T = "Specialists", bcAd1036T = "unknown", bcAd1037T = "Generalists",
+  bcAd1039T = "Generalists", bcAd1040T = "Generalists", bcAd1043T = "Generalists",
+  bcAd1044T = "Specialists", bcAd1045T = "unknown", bcAd1046T = "Dominants",
+  bcAd1047T = "Specialists", bcAd1048T = "Transients", bcAd1049T = "Transients",
+  bcAd1050T = "unknown", bcAd1052T = "unknown", bcAd1053T = "Generalists",
+  bcAd1054T = "Transients", bcAd1055T = "Specialists", bcAd1056T = "Transients",
+  bcAd1057T = "Transients", bcAd1058T = "Specialists", bcAd1059T = "unknown",
+  bcAd1060T = "Generalists", bcAd1061T = "Generalists", bcAd1062T = "Dominants",
+  bcAd1063T = "Dominants", bcAd1064T = "Dominants", bcAd1065T = "Generalists",
+  bcAd1066T = "Dominants", bcAd1067T = "Dominants", bcAd1068T = "Generalists",
+  bcAd1069T = "unknown", bcAd1070T = "Generalists", bcAd1071T = "Generalists",
+  bcAd1276T = "Dominants", bcAd1278T = "Dominants", bcAd1279T = "Generalists",
+  bcAd1280T = "Generalists", bcAd1282T = "Transients", bcAd1284T = "unknown",
+  bcAd1285T = "Transients", bcAd1286T = "Specialists"
+)
+
+genome_stats$Group <- strain_group_vector[genome_stats$Assembly]
+
 ggplot(genome_stats, aes(x = N50, y = Contigs, label = Assembly)) +
-  geom_point(color = "#0073C2FF", size = 3, alpha = 0.8) +
+  geom_point(aes(color = Group), size = 3, alpha = 0.8) +
   theme_minimal(base_size = 14) +
   labs(
     title = "Contigs vs. N50",
     x = "N50 (bp)",
-    y = "Number of Contigs"
-  ) + 
+    y = "Number of Contigs",
+    color = "Strain Group"
+  ) +
+  scale_color_manual(values = c(
+    Dominants = "#00FFFF",
+    Specialists = "#FF0000",
+    Generalists = "#00FF00",
+    Transients = "#FFFF00",
+    unknown = "#FFFAFA"
+  )) +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
     axis.title = element_text(face = "bold"),
