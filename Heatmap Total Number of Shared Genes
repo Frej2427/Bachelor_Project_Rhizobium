@@ -61,21 +61,54 @@ for strain1 in $strains; do
 done
 
 
+Rscript -e '
 library(pheatmap)
-shared_genes <- read.table("shared_genes_matrix.txt", header=TRUE, row.names=1, sep="\t", check.names=FALSE)
-shared_genes_matrix <- as.matrix(shared_genes)
-diag(shared_genes_matrix) <- max(shared_genes_matrix, na.rm=TRUE)
+mat <- read.table("shared_genes_matrix.txt", header=TRUE, row.names=1, check.names=FALSE)
 
-pheatmap(
-  shared_genes_matrix,
-  clustering_distance_rows = "euclidean",
-  clustering_distance_cols = "euclidean",
-  clustering_method = "average",
-  display_numbers = FALSE,
-  color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
-  fontsize = 8,
-  angle_col = 45,
-  filename = "shared_genes_heatmap.pdf",
-  show_rownames = FALSE,
-  show_colnames = FALSE
+strain_group_vector <- c(
+  bcAd1004T = "Specialists", bcAd1006T = "Transients", bcAd1007T = "Transients",
+  bcAd1013T = "Transients", bcAd1023T = "Transients", bcAd1024T = "Transients",
+  bcAd1026T = "Transients", bcAd1027T = "Transients", bcAd1028T = "Transients",
+  bcAd1029T = "Transients", bcAd1030T = "unknown", bcAd1031T = "Specialists",
+  bcAd1032T = "Dominants", bcAd1033T = "Specialists", bcAd1034T = "Specialists",
+  bcAd1035T = "Specialists", bcAd1036T = "unknown", bcAd1037T = "Generalists",
+  bcAd1039T = "Generalists", bcAd1040T = "Generalists", bcAd1043T = "Generalists",
+  bcAd1044T = "Specialists", bcAd1045T = "unknown", bcAd1046T = "Dominants",
+  bcAd1047T = "Specialists", bcAd1048T = "Transients", bcAd1049T = "Transients",
+  bcAd1050T = "unknown", bcAd1052T = "unknown", bcAd1053T = "Generalists",
+  bcAd1054T = "Transients", bcAd1055T = "Specialists", bcAd1056T = "Transients",
+  bcAd1057T = "Transients", bcAd1058T = "Specialists", bcAd1059T = "unknown",
+  bcAd1060T = "Generalists", bcAd1061T = "Generalists", bcAd1062T = "Dominants",
+  bcAd1063T = "Dominants", bcAd1064T = "Dominants", bcAd1065T = "Generalists",
+  bcAd1066T = "Dominants", bcAd1067T = "Dominants", bcAd1068T = "Generalists",
+  bcAd1069T = "unknown", bcAd1070T = "Generalists", bcAd1071T = "Generalists",
+  bcAd1276T = "Dominants", bcAd1278T = "Dominants", bcAd1279T = "Generalists",
+  bcAd1280T = "Generalists", bcAd1282T = "Transients", bcAd1284T = "unknown",
+  bcAd1285T = "Transients", bcAd1286T = "Specialists"
 )
+
+strain_groups <- data.frame(group = strain_group_vector)
+strain_groups <- strain_groups[rownames(mat), , drop = FALSE]
+group_colors <- list(group = c(
+  Dominants = "#00FFFF",
+  Specialists = "#FF0000",
+  Generalists = "#00FF00",
+  Transients = "#FFFF00",
+  unknown = "#FFFAFA"
+))
+pheatmap(mat,
+         clustering_distance_rows = "euclidean",
+         clustering_distance_cols = "euclidean",
+         clustering_method = "complete",
+         color = colorRampPalette(c("darkblue", "cyan", "yellow", "red"))(50),
+         fontsize = 8,
+         show_rownames = TRUE,
+         show_colnames = FALSE,
+         fontsize_row = 6,
+         treeheight_col = 100,
+         treeheight_row = 0,
+         annotation_row = strain_groups,
+         annotation_colors = group_colors,
+         annotation_names_row = FALSE,
+         annotation_names_col = FALSE,
+         filename = "shared_genes_heatmap_annotated.pdf")
