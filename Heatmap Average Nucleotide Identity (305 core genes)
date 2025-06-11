@@ -81,6 +81,38 @@ diag(ani_matrix) <- 100
 ani_matrix <- as.matrix(ani_matrix)
 write.table(ani_matrix, "ANI_matrix.tsv", sep="\t", quote=FALSE)
 
+strain_group_vector <- c(
+  bcAd1004T = "Specialists", bcAd1006T = "Transients", bcAd1007T = "Transients",
+  bcAd1013T = "Transients", bcAd1023T = "Transients", bcAd1024T = "Transients",
+  bcAd1026T = "Transients", bcAd1027T = "Transients", bcAd1028T = "Transients",
+  bcAd1029T = "Transients", bcAd1030T = "unknown", bcAd1031T = "Specialists",
+  bcAd1032T = "Dominants", bcAd1033T = "Specialists", bcAd1034T = "Specialists",
+  bcAd1035T = "Specialists", bcAd1036T = "unknown", bcAd1037T = "Generalists",
+  bcAd1039T = "Generalists", bcAd1040T = "Generalists", bcAd1043T = "Generalists",
+  bcAd1044T = "Specialists", bcAd1045T = "unknown", bcAd1046T = "Dominants",
+  bcAd1047T = "Specialists", bcAd1048T = "Transients", bcAd1049T = "Transients",
+  bcAd1050T = "unknown", bcAd1052T = "unknown", bcAd1053T = "Generalists",
+  bcAd1054T = "Transients", bcAd1055T = "Specialists", bcAd1056T = "Transients",
+  bcAd1057T = "Transients", bcAd1058T = "Specialists", bcAd1059T = "unknown",
+  bcAd1060T = "Generalists", bcAd1061T = "Generalists", bcAd1062T = "Dominants",
+  bcAd1063T = "Dominants", bcAd1064T = "Dominants", bcAd1065T = "Generalists",
+  bcAd1066T = "Dominants", bcAd1067T = "Dominants", bcAd1068T = "Generalists",
+  bcAd1069T = "unknown", bcAd1070T = "Generalists", bcAd1071T = "Generalists",
+  bcAd1276T = "Dominants", bcAd1278T = "Dominants", bcAd1279T = "Generalists",
+  bcAd1280T = "Generalists", bcAd1282T = "Transients", bcAd1284T = "unknown",
+  bcAd1285T = "Transients", bcAd1286T = "Specialists"
+)
+
+strain_groups <- data.frame(group = strain_group_vector)
+strain_groups <- strain_groups[rownames(ani_matrix), , drop = FALSE]
+group_colors <- list(group = c(
+  Dominants = "#00FFFF",
+  Specialists = "#FF0000",
+  Generalists = "#00FF00",
+  Transients = "#FFFF00",
+  unknown = "#FFFAFA"
+))
+
 pheatmap(ani_matrix,
          clustering_distance_rows = "euclidean",
          clustering_distance_cols = "euclidean",
@@ -89,12 +121,14 @@ pheatmap(ani_matrix,
          color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
          fontsize = 8,
          angle_col = 45,
-         filename = "ANI_heatmap.png",
+         filename = "ANI_heatmap.pdf",
          show_rownames = TRUE,
          show_colnames = FALSE,
-         fontsize_row = 6, 
-         fontsize_col = 10,
-         angle_row = 0,  
-         treeheight_row = 0,  
-         treeheight_col = 100,  
-         aspect_ratio = 1.5)  
+         fontsize_row = 6,  # Increase row label font size
+         fontsize_col = 10,  # Increase column label font size
+         angle_row = 0,  # Rotate row dendrogram labels
+         treeheight_row = 0,  # Increase height of row dendrogram
+         treeheight_col = 100,  # Increase height of column dendrogram
+         aspect_ratio = 1.5,  # Adjust aspect ratio
+         annotation_row = strain_groups,
+         annotation_colors = group_colors)
